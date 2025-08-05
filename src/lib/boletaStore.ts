@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { Product } from './productStore'; // Import Product interface
+import type { Product } from './productStore';
 
-interface Boleta {
+// 1. Exporta la interfaz Boleta
+export interface Boleta {
   id: string;
   cliente: string;
   nombreIdentidad: string;
@@ -12,18 +13,20 @@ interface Boleta {
   transportePlaca: string;
   numConstInscripcion: string;
   licenciaConducir: string;
-  products: Product[]; // Array of products in this boleta
+  products: Product[];
 }
 
-interface BoletaState {
+// 2. Exporta el tipo del estado del store
+export interface BoletaState {
   boletas: Boleta[];
-  addBoleta: (boleta: Boleta) => void;
+  addBoleta: (boleta: Omit<Boleta, 'id'>) => void; // No requiere id (se genera automático)
   deleteBoleta: (id: string) => void;
   updateBoleta: (boleta: Boleta) => void;
+  getBoletaById: (id: string) => Boleta | undefined;
 }
 
+// 3. Datos iniciales (pueden ser exportados si se necesitan en otros lugares)
 const initialBoletas: Boleta[] = [
-  // Sample data for testing
   {
     id: 'B001',
     cliente: 'Cliente A',
@@ -56,21 +59,48 @@ const initialBoletas: Boleta[] = [
     ],
   },
 ];
-
-export const useBoletaStore = create<BoletaState>((set) => ({
+export interface Boleta {
+  id: string;
+  cliente: string;
+  nombreIdentidad: string;
+  ruc: string;
+  fechaEmision: string;
+  fechaTraslado: string;
+  transporteMarca: string;
+  transportePlaca: string;
+  numConstInscripcion: string;
+  licenciaConducir: string;
+  products: Product[];
+}
+// 4. Exporta el store con todas las acciones
+export const useBoletaStore = create<BoletaState>((set, get) => ({
   boletas: initialBoletas,
-  addBoleta: (boleta) =>
+  
+  addBoleta: (boleta) => {
+    const newId = `B${String(get().boletas.length + 1).padStart(3, '0')}`;
     set((state) => ({
-      boletas: [...state.boletas, { ...boleta, id: `B${String(state.boletas.length + 1).padStart(3, '0')}` }],
-    })),
-  deleteBoleta: (id) =>
+      boletas: [...state.boletas, { ...boleta, id: newId }],
+    }));
+  },
+  
+  deleteBoleta: (id) => {
     set((state) => ({
       boletas: state.boletas.filter((boleta) => boleta.id !== id),
-    })),
-  updateBoleta: (updatedBoleta) =>
+    }));
+  },
+  
+  updateBoleta: (updatedBoleta) => {
     set((state) => ({
       boletas: state.boletas.map((boleta) =>
         boleta.id === updatedBoleta.id ? updatedBoleta : boleta
       ),
-    })),
+    }));
+  },
+  
+  getBoletaById: (id) => {
+    return get().boletas.find((boleta) => boleta.id === id);
+  },
 }));
+
+// 5. Exporta tipos adicionales si es necesario
+export type { Product } from './productStore';

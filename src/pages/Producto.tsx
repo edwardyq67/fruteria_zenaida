@@ -11,32 +11,32 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { useProductStore, Product } from '@/lib/productStore';
+import { useProductStore } from '@/lib/productStore';
+import type { Product } from '@/lib/productStore';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
-// Zod schema for product creation
 const createProductSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido"),
-  category: z.union([z.literal('fruta'), z.literal('verdura')]),
-  price: z.preprocess(
-    (val) => Number(val),
-    z.number().min(0.01, "El precio debe ser mayor a 0").max(1000000, "El precio es demasiado alto")
-  ),
+  name: z.string().min(1, 'El nombre es requerido'),
+  category: z.enum(['fruta', 'verdura']),
+  price: z.number()
+    .min(0, 'El precio debe ser positivo')
+    .refine(val => val !== undefined, {
+      message: 'El precio es requerido'
+    })
 });
 
 type CreateProductFormData = z.infer<typeof createProductSchema>;
 
 // Zod schema for product editing (similar to creation, but might have different validation rules)
 const editProductSchema = z.object({
+  id: z.string(),
   name: z.string().min(1, "El nombre es requerido"),
-  category: z.union([z.literal('fruta'), z.literal('verdura')]),
-  price: z.preprocess(
-    (val) => Number(val),
-    z.number().min(0.01, "El precio debe ser mayor a 0").max(1000000, "El precio es demasiado alto")
-  ),
+  category: z.union([z.literal("fruta"), z.literal("verdura")]),
+  price: z.number().min(0, "El precio debe ser positivo"),
 });
+
 
 type EditProductFormData = z.infer<typeof editProductSchema>;
 

@@ -25,9 +25,11 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { IconDotsVertical } from '@tabler/icons-react';
 
-import { useBoletaStore, Boleta } from '@/lib/boletaStore';
-import { Product, useProductStore } from '@/lib/productStore';
-import { ColumnDef } from '@tanstack/react-table';
+import { useBoletaStore } from '@/lib/boletaStore';
+import type { Boleta } from '@/lib/boletaStore';
+import { useProductStore } from '@/lib/productStore';
+import type { Product } from '@/lib/productStore';
+import { type ColumnDef } from '@tanstack/react-table';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -65,6 +67,7 @@ const editBoletaSchema = z.object({
 type EditBoletaFormData = z.infer<typeof editBoletaSchema>;
 
 export function Boletas() {
+  
   const boletas = useBoletaStore((state) => state.boletas);
   const addBoleta = useBoletaStore((state) => state.addBoleta);
   const deleteBoleta = useBoletaStore((state) => state.deleteBoleta);
@@ -83,7 +86,7 @@ export function Boletas() {
   // States for products within the new boleta form
   const [newBoletaProducts, setNewBoletaProducts] = useState<Product[]>([]);
   const [selectedProductId, setSelectedProductId] = useState('');
-  const [selectedProductQuantity, setSelectedProductQuantity] = useState<number>(1);
+  
 
   // React Hook Form for Create Boleta
   const { register: registerCreate, handleSubmit: handleSubmitCreate, formState: { errors: errorsCreate }, reset: resetCreateForm } = useForm<CreateBoletaFormData>({
@@ -121,20 +124,16 @@ export function Boletas() {
 
   const handleAddProductToNewBoleta = () => {
     const productToAdd = allProducts.find(p => p.id === selectedProductId);
-    if (productToAdd && selectedProductQuantity > 0) {
-      const productWithQuantity = { ...productToAdd, quantity: selectedProductQuantity };
+    if (productToAdd) {
       setNewBoletaProducts(prev => {
         const existingProductIndex = prev.findIndex(p => p.id === productToAdd.id);
         if (existingProductIndex > -1) {
-          const updatedProducts = [...prev];
-          updatedProducts[existingProductIndex] = { ...updatedProducts[existingProductIndex], quantity: (updatedProducts[existingProductIndex].quantity || 0) + selectedProductQuantity };
-          return updatedProducts;
+          return prev; // Product already exists, do not add again
         } else {
-          return [...prev, productWithQuantity];
+          return [...prev, productToAdd];
         }
       });
       setSelectedProductId('');
-      setSelectedProductQuantity(1);
     }
   };
 
@@ -380,16 +379,7 @@ export function Boletas() {
                       ))}
                     </select>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="productQuantity">Cantidad</Label>
-                    <Input
-                      id="productQuantity"
-                      type="number"
-                      value={selectedProductQuantity}
-                      onChange={(e) => setSelectedProductQuantity(parseInt(e.target.value) || 1)}
-                      min="1"
-                    />
-                  </div>
+                  
                   <Button type="button" onClick={handleAddProductToNewBoleta} className="mt-auto">Agregar Producto</Button>
                 </div>
 
@@ -398,7 +388,7 @@ export function Boletas() {
                     <h3 className="text-md font-medium mb-2">Productos Agregados:</h3>
                     <ul className="list-disc pl-5">
                       {newBoletaProducts.map(p => (
-                        <li key={p.id}>{p.name} (Cantidad: {p.quantity || 1}) - ${p.price.toFixed(2)}
+                        <li key={p.id}>{p.name} - ${p.price.toFixed(2)}
                           <Button
                             type="button"
                             variant="ghost"
@@ -546,7 +536,7 @@ export function Boletas() {
                   {detailsBoleta.products.length > 0 ? (
                     <ul className="list-disc pl-5">
                       {detailsBoleta.products.map(product => (
-                        <li key={product.id}>{product.name} (Cantidad: {product.quantity || 1}) - ${product.price.toFixed(2)}</li>
+                        <li key={product.id}>{product.name} - ${product.price.toFixed(2)}</li>
                       ))}
                     </ul>
                   ) : (
