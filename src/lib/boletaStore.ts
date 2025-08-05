@@ -1,8 +1,17 @@
 import { create } from 'zustand';
-import type { Product } from './productStore';
 
-// 1. Exporta la interfaz Boleta
-export interface Boleta {
+// Interfaz para los productos en el pedido
+interface ProductoPedido {
+  id: string;
+  nombre: string;
+  categoria: 'fruta' | 'verdura' | 'otros';
+  precio: number;
+  cantidad: number;
+  unidad: 'kg' | 'unidad' | 'litro' | 'caja'; // Tipos de unidades
+}
+
+// Interfaz para la Boleta
+interface Boleta {
   id: string;
   cliente: string;
   nombreIdentidad: string;
@@ -13,19 +22,21 @@ export interface Boleta {
   transportePlaca: string;
   numConstInscripcion: string;
   licenciaConducir: string;
-  products: Product[];
+  pedido: ProductoPedido[]; // Cambiado de products a pedido
+  total: number; // Solo total sin IVA
 }
 
-// 2. Exporta el tipo del estado del store
-export interface BoletaState {
+// Estado del store
+interface BoletaState {
   boletas: Boleta[];
-  addBoleta: (boleta: Omit<Boleta, 'id'>) => void; // No requiere id (se genera automático)
+  addBoleta: (boleta: Omit<Boleta, 'id' | 'total'>) => void;
   deleteBoleta: (id: string) => void;
   updateBoleta: (boleta: Boleta) => void;
   getBoletaById: (id: string) => Boleta | undefined;
+  calcularTotal: (pedido: ProductoPedido[]) => number;
 }
 
-// 3. Datos iniciales (pueden ser exportados si se necesitan en otros lugares)
+// Datos iniciales de ejemplo
 const initialBoletas: Boleta[] = [
   {
     id: 'B001',
@@ -38,48 +49,42 @@ const initialBoletas: Boleta[] = [
     transportePlaca: 'ABC-123',
     numConstInscripcion: 'CI-001',
     licenciaConducir: 'L-001',
-    products: [
-      { id: '1', category: 'fruta', name: 'Manzana', price: 1.50 },
-      { id: '2', category: 'verdura', name: 'Lechuga', price: 0.99 },
+    pedido: [
+      { 
+        id: '1', 
+        nombre: 'Manzana', 
+        categoria: 'fruta', 
+        precio: 1.50, 
+        cantidad: 2, 
+        unidad: 'kg' 
+      },
+      { 
+        id: '2', 
+        nombre: 'Lechuga', 
+        categoria: 'verdura', 
+        precio: 0.99, 
+        cantidad: 3, 
+        unidad: 'unidad' 
+      },
     ],
-  },
-  {
-    id: 'B002',
-    cliente: 'Cliente B',
-    nombreIdentidad: 'Maria Lopez',
-    ruc: '98765432109',
-    fechaEmision: '2025-08-03',
-    fechaTraslado: '2025-08-04',
-    transporteMarca: 'Nissan',
-    transportePlaca: 'XYZ-789',
-    numConstInscripcion: 'CI-002',
-    licenciaConducir: 'L-002',
-    products: [
-      { id: '3', category: 'fruta', name: 'Plátano', price: 0.75 },
-    ],
-  },
+    total: 5.97 // 1.50*2 + 0.99*3
+  }
 ];
-export interface Boleta {
-  id: string;
-  cliente: string;
-  nombreIdentidad: string;
-  ruc: string;
-  fechaEmision: string;
-  fechaTraslado: string;
-  transporteMarca: string;
-  transportePlaca: string;
-  numConstInscripcion: string;
-  licenciaConducir: string;
-  products: Product[];
-}
-// 4. Exporta el store con todas las acciones
+
+// Implementación del store
 export const useBoletaStore = create<BoletaState>((set, get) => ({
   boletas: initialBoletas,
   
   addBoleta: (boleta) => {
+    const total = get().calcularTotal(boleta.pedido);
     const newId = `B${String(get().boletas.length + 1).padStart(3, '0')}`;
+    
     set((state) => ({
-      boletas: [...state.boletas, { ...boleta, id: newId }],
+      boletas: [...state.boletas, { 
+        ...boleta, 
+        id: newId,
+        total 
+      }],
     }));
   },
   
@@ -90,9 +95,12 @@ export const useBoletaStore = create<BoletaState>((set, get) => ({
   },
   
   updateBoleta: (updatedBoleta) => {
+    const total = get().calcularTotal(updatedBoleta.pedido);
     set((state) => ({
       boletas: state.boletas.map((boleta) =>
-        boleta.id === updatedBoleta.id ? updatedBoleta : boleta
+        boleta.id === updatedBoleta.id 
+          ? { ...updatedBoleta, total } 
+          : boleta
       ),
     }));
   },
@@ -100,7 +108,12 @@ export const useBoletaStore = create<BoletaState>((set, get) => ({
   getBoletaById: (id) => {
     return get().boletas.find((boleta) => boleta.id === id);
   },
+  
+  calcularTotal: (pedido) => {
+    const total = pedido.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+    return parseFloat(total.toFixed(2));
+  }
 }));
 
-// 5. Exporta tipos adicionales si es necesario
-export type { Product } from './productStore';
+// Exportar tipos
+export type { Boleta, ProductoPedido };
