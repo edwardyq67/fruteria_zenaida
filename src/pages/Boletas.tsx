@@ -91,6 +91,8 @@ export function Boletas() {
   const [editingBoleta, setEditingBoleta] = useState<Boleta | null>(null);
   const [detailsBoleta, setDetailsBoleta] = useState<Boleta | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
+  const [selectedProductQuantity, setSelectedProductQuantity] = useState<number>(1);
+  const [selectedProductUnit, setSelectedProductUnit] = useState<'kg' | 'unidad' | 'litro' | 'caja'>('unidad');
 
   // States for products within the new boleta form
   const [newBoletaProducts, setNewBoletaProducts] = useState<ProductoPedido[]>(
@@ -144,6 +146,37 @@ export function Boletas() {
       .includes(filterRUC.toLowerCase());
     return matchesCliente && matchesRUC;
   });
+
+  const handleAddNewBoletaProduct = () => {
+    const productToAdd = allProducts.find(p => p.id === selectedProductId);
+    if (productToAdd && selectedProductQuantity > 0) {
+      const newProductoPedido: ProductoPedido = {
+        id: productToAdd.id,
+        nombre: productToAdd.name,
+        categoria: productToAdd.category,
+        precio: productToAdd.price,
+        cantidad: selectedProductQuantity,
+        unidad: selectedProductUnit,
+      };
+
+      setNewBoletaProducts(prev => {
+        const existingProductIndex = prev.findIndex(p => p.id === newProductoPedido.id);
+        if (existingProductIndex > -1) {
+          const updatedProducts = [...prev];
+          updatedProducts[existingProductIndex] = {
+            ...updatedProducts[existingProductIndex],
+            cantidad: updatedProducts[existingProductIndex].cantidad + newProductoPedido.cantidad,
+          };
+          return updatedProducts;
+        } else {
+          return [...prev, newProductoPedido];
+        }
+      });
+      setSelectedProductId('');
+      setSelectedProductQuantity(1);
+      setSelectedProductUnit('unidad');
+    }
+  };
 
   const handleRemoveProductFromNewBoleta = (productId: string) => {
     setNewBoletaProducts((prev) => prev.filter((p) => p.id !== productId));
@@ -320,7 +353,7 @@ export function Boletas() {
           <DialogTrigger asChild>
             <Button>Crear Boleta</Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[800px]">
+          <DialogContent className="sm:max-w-[800px] overflow-y-scroll max-h-[90vh] ">
             <DialogHeader>
               <DialogTitle>Crear Nueva Boleta</DialogTitle>
             </DialogHeader>
@@ -468,7 +501,7 @@ export function Boletas() {
               {/* Sección 4: Productos */}
               <div className="col-span-2 border-b pb-4 mb-4">
                 <h2 className="text-lg font-semibold mb-2">Productos</h2>
-                <div className="grid grid-cols-3 gap-2 items-end mb-4">
+                <div className="grid grid-cols-4 gap-2 items-end mb-4">
                   <div className="grid gap-2">
                     <Label htmlFor="productSelect">Producto</Label>
                     <select
@@ -485,6 +518,27 @@ export function Boletas() {
                       ))}
                     </select>
                   </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="productQuantity">Cantidad</Label>
+                    <Input id="productQuantity" type="number" min="1" value={selectedProductQuantity} onChange={(e) => setSelectedProductQuantity(parseInt(e.target.value) || 1)} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="productUnit">Unidad</Label>
+                    <select
+                      id="productUnit"
+                      value={selectedProductUnit}
+                      onChange={(e) => setSelectedProductUnit(e.target.value as 'kg' | 'unidad' | 'litro' | 'caja')}
+                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                    >
+                      <option value="kg">Kilogramo</option>
+                      <option value="unidad">Unidad</option>
+                      <option value="litro">Litro</option>
+                      <option value="caja">Caja</option>
+                    </select>
+                  </div>
+                  <Button type="button" className="mt-auto" onClick={handleAddNewBoletaProduct}>
+                    Agregar Producto
+                  </Button>
                 </div>
 
                 {newBoletaProducts.length > 0 && (
@@ -722,33 +776,110 @@ export function Boletas() {
               )}
             </div>
             <div className="grid gap-2 col-span-2">
-              <Label htmlFor="editBoletaProducts">Productos</Label>
-              <select
-                id="editBoletaProducts"
-                multiple
-                value={newBoletaProducts.map(p => p.id)} // Use newBoletaProducts for edit form as well
-                onChange={(e) => {
-                  const selectedProductIds = Array.from(e.target.selectedOptions, option => option.value);
-                  const selectedProductsAsPedido: ProductoPedido[] = allProducts
-                    .filter(p => selectedProductIds.includes(p.id))
-                    .map(p => ({
-                      id: p.id,
-                      nombre: p.name,
-                      categoria: p.category,
-                      precio: p.price,
-                      cantidad: 1, // Default quantity
-                      unidad: 'unidad', // Default unit
-                    }));
-                  setNewBoletaProducts(selectedProductsAsPedido);
-                }}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              >
-                {allProducts.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name} (${product.price.toFixed(2)})
-                  </option>
-                ))}
-              </select>
+              <Label>Productos</Label>
+              <div className="grid grid-cols-4 gap-2 items-end mb-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="productSelect">Producto</Label>
+                  <select
+                    id="productSelect"
+                    value={selectedProductId}
+                    onChange={(e) => setSelectedProductId(e.target.value)}
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                  >
+                    <option value="">Seleccionar Producto</option>
+                    {allProducts.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name} (${product.price.toFixed(2)})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="productQuantity">Cantidad</Label>
+                  <Input id="productQuantity" type="number" min="1" value={selectedProductQuantity} onChange={(e) => setSelectedProductQuantity(parseInt(e.target.value) || 1)} />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="productUnit">Unidad</Label>
+                  <select
+                    id="productUnit"
+                    value={selectedProductUnit}
+                    onChange={(e) => setSelectedProductUnit(e.target.value as 'kg' | 'unidad' | 'litro' | 'caja')}
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                  >
+                    <option value="kg">Kilogramo</option>
+                    <option value="unidad">Unidad</option>
+                    <option value="litro">Litro</option>
+                    <option value="caja">Caja</option>
+                  </select>
+                </div>
+                <Button type="button" className="mt-auto" onClick={handleAddNewBoletaProduct}>
+                  Agregar Producto
+                </Button>
+              </div>
+
+              {newBoletaProducts.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-md font-medium text-gray-700 mb-3">
+                    Productos Agregados
+                  </h3>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Producto
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cantidad
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Unidad
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Precio Unit.
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Subtotal
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {newBoletaProducts.map((p: ProductoPedido) => (
+                          <tr key={p.id}>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
+                              {p.nombre}
+                            </td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                              {p.cantidad}
+                            </td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500 capitalize">
+                              {p.unidad}
+                            </td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                              ${p.precio.toFixed(2)}
+                            </td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-500">
+                              ${(p.precio * p.cantidad).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm text-right">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleRemoveProductFromNewBoleta(p.id)
+                                }
+                                className="text-red-600 hover:text-red-900 text-sm font-medium focus:outline-none"
+                              >
+                                Eliminar
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter className="col-span-2">
               <Button type="submit">Guardar Cambios</Button>
@@ -804,11 +935,11 @@ export function Boletas() {
                   <h3 className="text-lg font-semibold mt-4 mb-2">
                     Productos en esta Boleta:
                   </h3>
-                  {detailsBoleta.products.length > 0 ? (
+                  {detailsBoleta.pedido.length > 0 ? (
                     <ul className="list-disc pl-5">
-                      {detailsBoleta.products.map((product) => (
-                        <li key={product.id}>
-                          {product.name} - ${product.price.toFixed(2)}
+                      {detailsBoleta.pedido.map((pedido) => (
+                        <li key={pedido.id}>
+                          {pedido.nombre} - ${pedido.precio.toFixed(2)}
                         </li>
                       ))}
                     </ul>
